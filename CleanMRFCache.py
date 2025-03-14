@@ -59,15 +59,16 @@ class Cleaner:
 
     def getFreeDiskSpace(self, input_path):      # static
         try:
+            tbytes = ctypes.c_ulonglong(0)  # Total disk space
             fbytes = ctypes.c_ulonglong(0)
             ctypes.windll.kernel32.GetDiskFreeSpaceExW(
                 ctypes.c_wchar_p(input_path),
                 None,
-                None,
+                ctypes.pointer(tbytes),
                 ctypes.pointer(fbytes))
         except:
             return -1
-        return fbytes
+        return tbytes, fbytes
 
     def getFileInfo(self, root_only=False):
         Message('[Generate file list]..')
@@ -119,6 +120,9 @@ parser.add_argument('-ext',
 parser.add_argument('-size', type=int,
                     help='Free size requested in Gigabytes. e.g. -size=1',
                     dest='size', default=2000000000)
+parser.add_argument('-percentcleanup', type=int,
+                    help='Percentage of disk to be cleaned up. e.g. -percentcleanup=10',
+                    dest='percentcleanup')
 
 log = None
 
@@ -150,14 +154,23 @@ cln.init(args.input_path, extensions)
 # ends
 
 # let's get the free space
-space_available = cln.getFreeDiskSpace(os.path.dirname(args.input_path))
+total_disk_space, space_available = cln.getFreeDiskSpace(os.path.dirname(args.input_path))
 if (space_available == -1):  # an error has occured
     Message('Err: Unable to get the free-disk-space for the path (%s)' %
             (args.input_path))
     exit(1)
 # ends
 
-space_to_free = args.size * 1000000000
+if total_disk_space == -1:  # an error has occured
+    Message('Err: Unable to get the total-disk-space for the path (%s)' %
+            (args.input_path))
+    exit(1)
+# ends
+
+if args.percentcleanup:
+    space_to_free = (args.percentcleanup/100) * total_disk_space
+else:
+    space_to_free = args.size * 1000000000
 space_available = space_available.value
 
 if (space_available >= space_to_free):
