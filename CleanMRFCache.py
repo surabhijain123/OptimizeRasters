@@ -31,7 +31,7 @@ import os
 import ctypes
 
 
-def Message(msg):
+def log_message(msg):
     """Prints message and flushes stdout for real-time output."""
     print(msg)
     sys.stdout.flush()
@@ -73,7 +73,7 @@ class Cleaner:
 
     def get_file_info(self, root_only=False):
         """Scans the directory and collects file information."""
-        Message("[Scanning files]...")
+        log_message("[Scanning files]...")
         for root, _, files in os.walk(self.input_path):
             if root_only and root != self.input_path:
                 continue
@@ -89,7 +89,7 @@ class Cleaner:
                             "at": os.path.getatime(file_path)
                         })
                     except Exception as exp:
-                        Message(f"Err: {exp}")
+                        log_message(f"Err: {exp}")
         return bool(self.file_info)
 
 
@@ -108,8 +108,8 @@ def main():
 
     args = parser.parse_args()
 
-    Message(__program_name__)
-    Message(parser.description)
+    log_message(__program_name__)
+    log_message(parser.description)
 
     # Validate extensions
     extensions = {"mrfcache"}
@@ -122,31 +122,31 @@ def main():
     # Retrieve disk space
     total_disk_space, space_available = cleaner.get_free_disk_space(os.path.dirname(args.input_path))
     if space_available == -1:
-        Message(f"Err: Unable to determine free disk space for {args.input_path}")
+        log_message(f"Err: Unable to determine free disk space for {args.input_path}")
         exit(1)
-    
+        
     if total_disk_space == -1:
-        Message(f"Err: Unable to determine total disk space for {args.input_path}")
+        log_message(f"Err: Unable to determine total disk space for {args.input_path}")
         exit(1)
 
     # Calculate space to free
     if args.percentcleanup:
         if not (1 <= args.percentcleanup <= 100):
-            Message("Err: -percentcleanup must be between 1 and 100.")
+            log_message("Err: -percentcleanup must be between 1 and 100.")
             exit(1)
         space_to_free = (args.percentcleanup / 100) * total_disk_space
     else:
         space_to_free = args.size * 1_000_000_000  # Convert GB to bytes
 
     if space_available >= space_to_free:
-        Message("The disk already has the requested free space.")
-        Message(f"Total space available: {space_available / (1024 * 1024):.2f} MB")
+        log_message("The disk already has the requested free space.")
+        log_message(f"Total space available: {space_available / (1024 * 1024):.2f} MB")
         exit(0)
 
-    Message(f"Mode: {args.mode.lower()}")
+    log_message(f"Mode: {args.mode.lower()}")
 
     if not cleaner.get_file_info():
-        Message("Err: No matching files found.")
+        log_message("Err: No matching files found.")
         exit(1)
 
     # Sort files by access time (oldest first)
@@ -162,21 +162,21 @@ def main():
             try:
                 os.remove(file_path)
                 space_available += size
-                Message(f"[Deleted] {file_path}")
+                log_message(f"[Deleted] {file_path}")
 
                 if space_available >= space_to_free:
-                    Message("\nRequired disk space has been freed.")
+                    log_message("\nRequired disk space has been freed.")
                     break
             except OSError as e:
-                Message(f"Err: Unable to delete {file_path}. Skipping... ({e})")
+                log_message(f"Err: Unable to delete {file_path}. Skipping... ({e})")
 
-    Message(f"\nPotential savings: {total_savings} bytes.")
+    log_message(f"\nPotential savings: {total_savings} bytes.")
     if args.mode.lower() == "del":
-        Message(f"Total space freed: {space_available} bytes")
+        log_message(f"Total space freed: {space_available} bytes")
         if space_available < space_to_free:
-            Message("\nUnable to free the requested space.")
+            log_message("\nUnable to free the requested space.")
 
-    Message("\nDone.")
+    log_message("\nDone.")
 
 
 if __name__ == "__main__":
